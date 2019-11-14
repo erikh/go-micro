@@ -2,6 +2,7 @@ package micro
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/micro/cli"
@@ -31,17 +32,20 @@ type Options struct {
 	// Other options for implementations of the interface
 	// can be stored in a context
 	Context context.Context
+
+	SignalChan chan os.Signal
 }
 
 func newOptions(opts ...Option) Options {
 	opt := Options{
-		Broker:    broker.DefaultBroker,
-		Cmd:       cmd.DefaultCmd,
-		Client:    client.DefaultClient,
-		Server:    server.DefaultServer,
-		Registry:  registry.DefaultRegistry,
-		Transport: transport.DefaultTransport,
-		Context:   context.Background(),
+		Broker:     broker.DefaultBroker,
+		Cmd:        cmd.DefaultCmd,
+		Client:     client.DefaultClient,
+		Server:     server.DefaultServer,
+		Registry:   registry.DefaultRegistry,
+		Transport:  transport.DefaultTransport,
+		Context:    context.Background(),
+		SignalChan: make(chan os.Signal),
 	}
 
 	for _, o := range opts {
@@ -153,6 +157,20 @@ func Metadata(md map[string]string) Option {
 func Flags(flags ...cli.Flag) Option {
 	return func(o *Options) {
 		o.Cmd.App().Flags = append(o.Cmd.App().Flags, flags...)
+	}
+}
+
+// SignalChan replaces the signal handler with the channel provided to the
+// option; if this is not specified, a standard handler that traps TERM, INT
+// and QUIT will be installed.
+//
+// If you wish to have no signals handled, simply pass nil.
+func SignalChan(sigChan chan os.Signal) Option {
+	return func(o *Options) {
+		if sigChan == nil {
+			sigChan = make(chan os.Signal)
+		}
+		o.SignalChan = sigChan
 	}
 }
 
